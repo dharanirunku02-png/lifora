@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Header from './components/Header';
 import ControlsBar from './components/ControlsBar';
+import HackathonDemoBar, { LIFORA_DEMO_STEPS } from './components/HackathonDemoBar';
 import KpiCards from './components/KpiCards';
-import TokyoMap from './components/TokyoMap';
-import StationTable from './components/StationTable';
-import PredictionPanel from './components/PredictionPanel';
-import OptimizationPanel from './components/OptimizationPanel';
-import LiveEventsFeed from './components/LiveEventsFeed';
-import StationDetailModal from './components/StationDetailModal';
+import LiforaMap from './components/LiforaMap';
+import CustomerPortal from './components/CustomerPortal';
+import DriverPortal from './components/DriverPortal';
+import AdminPortal from './components/AdminPortal';
 import AnalyticsSection from './components/AnalyticsSection';
-import HackathonDemoBar, { DEMO_STEPS } from './components/HackathonDemoBar';
+import LiveEventsFeed from './components/LiveEventsFeed';
+import AmbulanceModal from './components/AmbulanceModal';
+import BillReceiptModal from './components/BillReceiptModal';
+import FamilyShareModal from './components/FamilyShareModal';
 
 import {
   fetchSimulationState,
@@ -17,29 +19,43 @@ import {
   postPauseSimulation,
   postResetSimulation,
   postSetSpeed,
-  postTriggerSpike,
-  postExecuteOptimization,
+  postCreateBooking,
+  postAcceptBooking,
+  postUpdateBookingStatus,
+  postCompleteBooking,
+  postCancelBooking,
+  postCreateAmbulance,
+  postAdvanceAmbulance,
+  postDemoStep,
   fallbackEngine
 } from './api/client';
 
 export default function App() {
   const [state, setState] = useState(fallbackEngine.getState());
   const [dataSource, setDataSource] = useState('checking...');
-  const [selectedStationId, setSelectedStationId] = useState(null);
-  const [vehicleFilter, setVehicleFilter] = useState('ALL');
+  const [currentRole, setCurrentRole] = useState('customer'); // 'customer', 'driver', 'admin'
+  const [lang, setLang] = useState('en'); // 'en' or 'te'
+  const [selectedHospitalId, setSelectedHospitalId] = useState('hosp-asram');
+
+  // Modals State
+  const [isAmbulanceModalOpen, setIsAmbulanceModalOpen] = useState(false);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [selectedReceiptBooking, setSelectedReceiptBooking] = useState(null);
+  const [isFamilyShareOpen, setIsFamilyShareOpen] = useState(false);
+  const [selectedShareBooking, setSelectedShareBooking] = useState(null);
+
+  // 12-Step Demo Runner
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [demoStep, setDemoStep] = useState(1);
-  const [isTransferring, setIsTransferring] = useState(false);
-
   const demoTimerRef = useRef(null);
 
-  // Polling loop for simulation updates (every 1.5s)
+  // Polling loop for state sync (every 1.5s)
   useEffect(() => {
     let mounted = true;
 
     const interval = setInterval(async () => {
-      // If local engine is ticking
-      if (dataSource === 'client' && state.is_running) {
+      // Local client tick if standalone
+      if (dataSource === 'client' && state?.is_running) {
         fallbackEngine.tick(3);
       }
 
@@ -48,11 +64,6 @@ export default function App() {
         if (mounted) {
           setState(data);
           setDataSource(source);
-          if (data.active_transfers && data.active_transfers.length > 0) {
-            setIsTransferring(true);
-          } else {
-            setIsTransferring(false);
-          }
         }
       } catch (err) {
         if (mounted) {
@@ -97,22 +108,117 @@ export default function App() {
     setState(data);
   };
 
-  // Handle Trigger Demand Spike
-  const handleTriggerSpike = async (stationId, magnitude = 16) => {
-    await postTriggerSpike(stationId, magnitude);
+  // Create Booking
+  const handleCreateBooking = async (req) => {
+    await postCreateBooking(req);
     const { data } = await fetchSimulationState();
     setState(data);
   };
 
-  // Handle Execute Optimization
-  const handleExecuteOptimization = async (recId) => {
-    setIsTransferring(true);
-    await postExecuteOptimization(recId);
+  // Accept Booking
+  const handleAcceptBooking = async (bookingId, driverId) => {
+    await postAcceptBooking(bookingId, driverId);
     const { data } = await fetchSimulationState();
     setState(data);
   };
 
-  // 10-Step Hackathon Demo Mode Runner
+  // Update Status
+  const handleUpdateStatus = async (bookingId, status) => {
+    await postUpdateBookingStatus(bookingId, status);
+    const { data } = await fetchSimulationState();
+    setState(data);
+  };
+
+  // Complete Booking
+  const handleCompleteBooking = async (bookingId) => {
+    await postCompleteBooking(bookingId);
+    const { data } = await fetchSimulationState();
+    setState(data);
+  };
+
+  // Cancel Booking
+  const handleCancelBooking = async (bookingId) => {
+    await postCancelBooking(bookingId);
+    const { data } = await fetchSimulationState();
+    setState(data);
+  };
+
+  // Create Ambulance Request
+  const handleCreateAmbulance = async (req) => {
+    await postCreateAmbulance(req);
+    const { data } = await fetchSimulationState();
+    setState(data);
+  };
+
+  // Advance Ambulance Status
+  const handleAdvanceAmbulanceStatus = async (requestId, status) => {
+    await postAdvanceAmbulance(requestId, status);
+    const { data } = await fetchSimulationState();
+    setState(data);
+  };
+
+  // Quick Action Triggers
+  const handleTriggerBooking = async () => {
+    await postCreateBooking({
+      customerName: "Srinivasa Rao",
+      patientName: "Srinivasa Rao (Fever & Joint Swelling)",
+      phone: "+91 98482 99881",
+      pickupLocation: "Bhimadole Town",
+      pickupLat: 16.8200,
+      pickupLng: 81.2700,
+      destinationHospitalId: "hosp-apollo",
+      destinationHospitalName: "Apollo Reach Hospital",
+      destinationLat: 16.7125,
+      destinationLng: 81.0965,
+      preferredTime: "Immediate",
+      journeyType: "one_way",
+      vehicleCategory: "CAR",
+      passengerCount: 2,
+      needsWheelchair: false
+    });
+    const { data } = await fetchSimulationState();
+    setState(data);
+  };
+
+  const handleTriggerAmbulance = async () => {
+    await postCreateAmbulance({
+      callerName: "PHC Nurse Mary",
+      callerPhone: "+91 94901 08108",
+      emergencyType: "MATERNAL_LABOR",
+      pickupLocation: "Pedavegi Village Health Center",
+      pickupLat: 16.8120,
+      pickupLng: 81.1030,
+      hospitalName: "District Government General Hospital (GGH)"
+    });
+    const { data } = await fetchSimulationState();
+    setState(data);
+    setIsAmbulanceModalOpen(true);
+  };
+
+  const handleAdvanceActiveRide = async () => {
+    const active = (state.bookings || []).find(b => 
+      !['COMPLETED', 'CANCELLED'].includes(b.status)
+    );
+    if (!active) return;
+
+    const transitions = {
+      'REQUESTED': 'DRIVER_ASSIGNED',
+      'DRIVER_ASSIGNED': 'DRIVER_EN_ROUTE',
+      'DRIVER_EN_ROUTE': 'ARRIVED_AT_PICKUP',
+      'ARRIVED_AT_PICKUP': 'PATIENT_PICKED_UP',
+      'PATIENT_PICKED_UP': 'REACHED_HOSPITAL',
+      'REACHED_HOSPITAL': 'COMPLETED'
+    };
+
+    const next = transitions[active.status];
+    if (next === 'COMPLETED') {
+      await handleCompleteBooking(active.id);
+    } else if (next) {
+      await handleUpdateStatus(active.id, next);
+    }
+  };
+
+  // 12-Step Hackathon Demo Runner
   const handleRunDemo = () => {
     setIsDemoMode(true);
     setDemoStep(1);
@@ -120,38 +226,30 @@ export default function App() {
   };
 
   const executeDemoStep = async (step) => {
-    if (step === 1) {
-      await postResetSimulation();
-      fallbackEngine.addEvent("DEMO", "STEP 1: Normal Tokyo network operations baseline.", "Shibuya Station", "info");
-    } else if (step === 2) {
-      await postTriggerSpike("shibuya", 16);
-      fallbackEngine.addEvent("DEMO", "STEP 2: Morning rush surge triggered at Shibuya Station.", "Shibuya Station", "warning");
-    } else if (step === 3) {
-      await postTriggerSpike("shibuya", 6);
-      fallbackEngine.addEvent("DEMO", "STEP 3: Battery reserves at Shibuya decrease rapidly.", "Shibuya Station", "warning");
-    } else if (step === 4 || step === 5) {
-      fallbackEngine.addEvent("DEMO", "STEP 4 & 5: AI Shortage Predictor triggered: Imminent stockout forecasted in ~7 min.", "Shibuya Station", "critical");
-    } else if (step === 6 || step === 7) {
-      fallbackEngine.addEvent("DEMO", "STEP 6 & 7: Optimization Engine scans network: Shinjuku selected as optimal donor (surplus: 22 units).", "Shinjuku Station", "info");
-    } else if (step === 8 || step === 9) {
-      if (state.recommendations && state.recommendations.length > 0) {
-        await postExecuteOptimization(state.recommendations[0].id);
-      } else {
-        await postExecuteOptimization(null);
-      }
-      fallbackEngine.addEvent("DEMO", "STEP 8 & 9: Transfer dispatched! Animated transit vehicle traveling along Tokyo corridor.", "Shinjuku Station", "success");
+    setDemoStep(step);
+    await postDemoStep(step);
+    
+    // Automatically switch role views to illustrate story
+    if (step === 1 || step === 2 || step === 3 || step === 6 || step === 9) {
+      setCurrentRole('customer');
+    } else if (step === 4 || step === 5 || step === 7) {
+      setCurrentRole('driver');
     } else if (step === 10) {
-      const shibuya = fallbackEngine.stations.find(s => s.id === 'shibuya');
-      if (shibuya) {
-        shibuya.available = Math.max(16, shibuya.available);
-        shibuya.avg_waiting_time = 2.9;
-        shibuya.shortage_risk_score = 22;
-        shibuya.shortage_risk_level = "Low";
-        shibuya.predicted_shortage_min = null;
-        shibuya.active_requests = 8;
+      setIsAmbulanceModalOpen(true);
+    } else if (step === 11) {
+      setCurrentRole('admin');
+      setIsAmbulanceModalOpen(false);
+    }
+
+    if (step === 8) {
+      // Show receipt
+      const latest = (state.bookings || [])[state.bookings.length - 1];
+      if (latest) {
+        setSelectedReceiptBooking(latest);
+        setIsReceiptModalOpen(true);
       }
-      fallbackEngine.activeTransfers = [];
-      fallbackEngine.addEvent("DEMO", "STEP 10: Batteries restocked at Shibuya! Waiting time slashed by 65%, shortage resolved!", "Shibuya Station", "success");
+    } else {
+      setIsReceiptModalOpen(false);
     }
 
     const { data } = await fetchSimulationState();
@@ -159,146 +257,182 @@ export default function App() {
   };
 
   const handleNextDemoStep = () => {
-    if (demoStep < 10) {
-      const next = demoStep + 1;
-      setDemoStep(next);
-      executeDemoStep(next);
+    if (demoStep < 12) {
+      executeDemoStep(demoStep + 1);
     } else {
-      setIsDemoMode(false);
+      executeDemoStep(1);
     }
   };
 
   const handleStopDemo = () => {
     setIsDemoMode(false);
+    setDemoStep(1);
   };
 
-  // Filter stations if vehicle filter is applied
-  const filteredStations = state?.stations || [];
-  const selectedStation = state?.stations?.find(s => s.id === selectedStationId);
+  // Modals helpers
+  const handleViewReceipt = (booking) => {
+    setSelectedReceiptBooking(booking);
+    setIsReceiptModalOpen(true);
+  };
+
+  const handleShareFamily = (booking) => {
+    setSelectedShareBooking(booking);
+    setIsFamilyShareOpen(true);
+  };
 
   return (
-    <div className="min-h-screen bg-[#0a0e17] text-slate-100 flex flex-col font-['Plus_Jakarta_Sans',sans-serif]">
-      {/* 1. Header */}
+    <div className="min-h-screen bg-[#070b12] text-slate-100 flex flex-col font-['Plus_Jakarta_Sans',sans-serif] selection:bg-teal-500/30 selection:text-teal-200">
+      
+      {/* Top Header */}
       <Header
-        state={state}
+        currentRole={currentRole}
+        onRoleChange={setCurrentRole}
+        onOpenAmbulanceModal={() => setIsAmbulanceModalOpen(true)}
+        onRunDemo={handleRunDemo}
+        lang={lang}
+        onToggleLang={() => setLang(lang === 'en' ? 'te' : 'en')}
+        isDemoActive={isDemoMode}
         dataSource={dataSource}
-        onReset={handleReset}
       />
 
-      {/* 2. Hackathon Demo Mode Guided Bar (if active) */}
+      {/* 12-Step Guided Demo Bar (Sticky under header when demo is active) */}
       {isDemoMode && (
         <HackathonDemoBar
           currentStep={demoStep}
-          totalSteps={10}
+          totalSteps={12}
           onNext={handleNextDemoStep}
           onStop={handleStopDemo}
+          onSelectStep={executeDemoStep}
         />
       )}
 
-      {/* 3. Controls Bar */}
+      {/* Simulation Controls Bar */}
       <ControlsBar
-        isRunning={state?.is_running}
-        simSpeed={state?.sim_speed}
+        state={state}
+        dataSource={dataSource}
         onTogglePlay={handleTogglePlay}
         onReset={handleReset}
         onSetSpeed={handleSetSpeed}
-        onTriggerSpike={handleTriggerSpike}
-        onRunDemo={handleRunDemo}
-        onOptimize={() => handleExecuteOptimization(state?.recommendations?.[0]?.id)}
-        hasRecommendations={state?.recommendations?.length > 0}
-        vehicleFilter={vehicleFilter}
-        onSetVehicleFilter={setVehicleFilter}
-        stations={state?.stations || []}
+        onTriggerBooking={handleTriggerBooking}
+        onTriggerAmbulance={handleTriggerAmbulance}
+        onAdvanceRide={handleAdvanceActiveRide}
+        lang={lang}
       />
 
-      {/* Main Dashboard Layout */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-6">
-        {/* KPI Cards Row */}
-        <section>
-          <KpiCards state={state} />
-        </section>
+      {/* Main Workspace */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        
+        {/* Top KPI Metrics Row */}
+        <KpiCards state={state} lang={lang} />
 
-        {/* Live Japan Map & AI Prediction Panel */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Map (7 cols) */}
-          <div className="lg:col-span-7">
-            <TokyoMap
-              stations={filteredStations}
-              activeTransfers={state?.active_transfers || []}
-              onSelectStation={setSelectedStationId}
-              selectedStationId={selectedStationId}
-            />
+        {/* Live Leaflet Map Section */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+              <span>Healthcare Mobility Network & Hospital Route Tracker</span>
+            </h4>
+            <span className="text-[10px] font-mono text-teal-400">
+              Eluru & Andhra Pradesh • OpenStreetMap Live
+            </span>
           </div>
 
-          {/* AI Prediction & Quick Threat Assessment (5 cols) */}
-          <div className="lg:col-span-5">
-            <PredictionPanel
-              stations={filteredStations}
-              simPeriod={state?.sim_day_period}
-            />
-          </div>
-        </section>
-
-        {/* Station Table */}
-        <section>
-          <StationTable
-            stations={filteredStations}
-            onSelectStation={setSelectedStationId}
-            onTriggerSpike={handleTriggerSpike}
-            selectedStationId={selectedStationId}
+          <LiforaMap
+            activeBookings={state.bookings || []}
+            drivers={state.drivers || []}
+            onSelectHospital={setSelectedHospitalId}
+            selectedHospitalId={selectedHospitalId}
           />
-        </section>
+        </div>
 
-        {/* Optimization Engine & Live Events Stream */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Optimization & Before/After Card (7 cols) */}
-          <div className="lg:col-span-7">
-            <OptimizationPanel
-              recommendations={state?.recommendations || []}
-              onExecuteOptimization={handleExecuteOptimization}
-              isTransferring={isTransferring}
-            />
-          </div>
-
-          {/* Live Activity Feed (5 cols) */}
-          <div className="lg:col-span-5">
-            <LiveEventsFeed
-              events={state?.events || []}
-            />
-          </div>
-        </section>
-
-        {/* Analytics & Performance Charts */}
+        {/* Dynamic Role Portal View */}
         <section className="pt-2">
-          <AnalyticsSection
-            stations={filteredStations}
-          />
+          {currentRole === 'customer' && (
+            <CustomerPortal
+              bookings={state.bookings || []}
+              drivers={state.drivers || []}
+              onCreateBooking={handleCreateBooking}
+              onCancelBooking={handleCancelBooking}
+              onViewReceipt={handleViewReceipt}
+              onShareFamily={handleShareFamily}
+              lang={lang}
+            />
+          )}
+
+          {currentRole === 'driver' && (
+            <DriverPortal
+              drivers={state.drivers || []}
+              bookings={state.bookings || []}
+              onAcceptBooking={handleAcceptBooking}
+              onUpdateStatus={handleUpdateStatus}
+              onCompleteBooking={handleCompleteBooking}
+              onViewReceipt={handleViewReceipt}
+              lang={lang}
+            />
+          )}
+
+          {currentRole === 'admin' && (
+            <AdminPortal
+              bookings={state.bookings || []}
+              drivers={state.drivers || []}
+              ambulanceRequests={state.ambulance_requests || []}
+              onViewReceipt={handleViewReceipt}
+              lang={lang}
+            />
+          )}
         </section>
+
+        {/* Operations Analytics & System Activity Feed */}
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4 border-t border-slate-800">
+          <div className="lg:col-span-2">
+            <AnalyticsSection analytics={state.analytics} />
+          </div>
+
+          <div>
+            <LiveEventsFeed events={state.events || []} />
+          </div>
+        </section>
+
       </main>
 
-      {/* Station IoT Telemetry Modal */}
-      {selectedStation && (
-        <StationDetailModal
-          station={selectedStation}
-          onClose={() => setSelectedStationId(null)}
-          onTriggerSpike={handleTriggerSpike}
-        />
-      )}
-
-      {/* Footer */}
-      <footer className="border-t border-slate-800/80 bg-[#0d131f] py-6 px-4 lg:px-8 mt-12 text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div>
-            <span className="text-slate-300 font-bold">SwapSmart Japan</span> — AI-Powered EV & E-Bike Battery Swapping Network
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              Developed for India–Japan Hackathon 2026 • Tokyo Metropolitan Area Mobility Corridor Simulation
-            </p>
-          </div>
-          <div className="text-right text-[11px] font-mono">
-            <span className="text-cyan-400">Live Simulation / Synthetic Demo Data</span>
-          </div>
+      {/* Startup Footer & Pitch Summary */}
+      <footer className="bg-slate-950 border-t border-slate-800 py-6 px-4 sm:px-6 lg:px-8 mt-12 text-xs text-slate-500 text-center space-y-2">
+        <div className="flex flex-wrap items-center justify-center gap-3 text-slate-400 font-bold">
+          <span>LIFORA: Connecting Every Life to Care</span>
+          <span>•</span>
+          <span>24/7 Affordable Healthcare Mobility Prototype</span>
+          <span>•</span>
+          <span>Eluru & Rural Andhra Pradesh</span>
         </div>
+        <p className="text-[11px] max-w-2xl mx-auto text-slate-500">
+          * This application is a student-led startup prototype and interactive simulation created for hackathon demonstration. It does not claim to operate an active commercial ambulance fleet or collect real hospital tariffs. In real medical emergencies, always dial 108 or 112 directly.
+        </p>
       </footer>
+
+      {/* Modals */}
+      <AmbulanceModal
+        isOpen={isAmbulanceModalOpen}
+        onClose={() => setIsAmbulanceModalOpen(false)}
+        ambulanceRequests={state.ambulance_requests || []}
+        onRequestAmbulance={handleCreateAmbulance}
+        onAdvanceAmbulanceStatus={handleAdvanceAmbulanceStatus}
+        lang={lang}
+      />
+
+      <BillReceiptModal
+        isOpen={isReceiptModalOpen}
+        onClose={() => setIsReceiptModalOpen(false)}
+        booking={selectedReceiptBooking}
+        receipt={state.receipts ? state.receipts[selectedReceiptBooking?.id] : null}
+        lang={lang}
+      />
+
+      <FamilyShareModal
+        isOpen={isFamilyShareOpen}
+        onClose={() => setIsFamilyShareOpen(false)}
+        booking={selectedShareBooking}
+        lang={lang}
+      />
+
     </div>
   );
 }

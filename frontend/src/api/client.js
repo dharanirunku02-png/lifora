@@ -31,7 +31,7 @@ export async function fetchSimulationState() {
     }
   }
   
-  // Fallback to client engine
+  // Standalone client fallback
   return { data: fallbackEngine.getState(), source: 'client' };
 }
 
@@ -45,7 +45,7 @@ export async function postStartSimulation() {
     }
   }
   fallbackEngine.isRunning = true;
-  fallbackEngine.addEvent("INFO", "Simulation started in local engine.");
+  fallbackEngine.addEvent("INFO", "LIFORA Healthcare Transit simulation resumed.", "info");
   return { status: "started" };
 }
 
@@ -59,7 +59,7 @@ export async function postPauseSimulation() {
     }
   }
   fallbackEngine.isRunning = false;
-  fallbackEngine.addEvent("INFO", "Simulation paused.");
+  fallbackEngine.addEvent("INFO", "Simulation paused.", "info");
   return { status: "paused" };
 }
 
@@ -93,38 +93,124 @@ export async function postSetSpeed(speed) {
   return { status: "ok", speed };
 }
 
-export async function postTriggerSpike(stationId, magnitude = 16) {
+export async function postCreateBooking(req) {
   if (isBackendAvailable) {
     try {
-      const res = await fetch('/api/simulation/demand-spike', {
+      const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ station_id: stationId, magnitude })
+        body: JSON.stringify(req)
       });
       if (res.ok) return await res.json();
     } catch (e) {
       isBackendAvailable = false;
     }
   }
-  fallbackEngine.triggerSpike(stationId, magnitude);
-  return { status: "ok", station_id: stationId };
+  return fallbackEngine.createBooking(req);
 }
 
-export async function postExecuteOptimization(recommendationId) {
+export async function postAcceptBooking(bookingId, driverId = null) {
   if (isBackendAvailable) {
     try {
-      const res = await fetch('/api/optimization/execute', {
+      const res = await fetch(`/api/bookings/${bookingId}/accept`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recommendation_id: recommendationId })
+        body: JSON.stringify({ driver_id: driverId })
       });
       if (res.ok) return await res.json();
     } catch (e) {
       isBackendAvailable = false;
     }
   }
-  const transfer = fallbackEngine.executeTransfer(recommendationId);
-  return { status: "dispatched", transfer };
+  return fallbackEngine.acceptBooking(bookingId, driverId);
+}
+
+export async function postUpdateBookingStatus(bookingId, status) {
+  if (isBackendAvailable) {
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      isBackendAvailable = false;
+    }
+  }
+  return fallbackEngine.advanceBookingStatus(bookingId, status);
+}
+
+export async function postCompleteBooking(bookingId) {
+  if (isBackendAvailable) {
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/complete`, { method: 'POST' });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      isBackendAvailable = false;
+    }
+  }
+  return fallbackEngine.completeBooking(bookingId);
+}
+
+export async function postCancelBooking(bookingId) {
+  if (isBackendAvailable) {
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/cancel`, { method: 'POST' });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      isBackendAvailable = false;
+    }
+  }
+  return fallbackEngine.cancelBooking(bookingId);
+}
+
+export async function postCreateAmbulance(req) {
+  if (isBackendAvailable) {
+    try {
+      const res = await fetch('/api/ambulance-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(req)
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      isBackendAvailable = false;
+    }
+  }
+  return fallbackEngine.createAmbulanceRequest(req);
+}
+
+export async function postAdvanceAmbulance(requestId, status) {
+  if (isBackendAvailable) {
+    try {
+      const res = await fetch(`/api/ambulance-requests/${requestId}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      isBackendAvailable = false;
+    }
+  }
+  return fallbackEngine.advanceAmbulanceStatus(requestId, status);
+}
+
+export async function postDemoStep(step) {
+  if (isBackendAvailable) {
+    try {
+      const res = await fetch('/api/simulation/demo-step', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ step })
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      isBackendAvailable = false;
+    }
+  }
+  return fallbackEngine.executeDemoStep(step);
 }
 
 export { fallbackEngine };

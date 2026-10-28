@@ -1,170 +1,138 @@
-import React, { useState } from 'react';
-import { Play, Pause, RotateCcw, Zap, Sparkles, TrendingUp, Filter, Bike, Car, ArrowRightLeft } from 'lucide-react';
+import React from 'react';
+import { 
+  Play, 
+  Pause, 
+  RotateCcw, 
+  Gauge, 
+  Clock, 
+  Ambulance, 
+  Car, 
+  FastForward, 
+  AlertCircle,
+  Database,
+  CheckCircle2
+} from 'lucide-react';
+import { translations } from '../i18n/translations';
 
 export default function ControlsBar({
-  isRunning,
-  simSpeed,
+  state,
+  dataSource,
   onTogglePlay,
   onReset,
   onSetSpeed,
-  onTriggerSpike,
-  onRunDemo,
-  onOptimize,
-  hasRecommendations,
-  vehicleFilter,
-  onSetVehicleFilter,
-  stations = []
+  onTriggerBooking,
+  onTriggerAmbulance,
+  onAdvanceRide,
+  lang = 'en'
 }) {
-  const [selectedStationForSpike, setSelectedStationForSpike] = useState('shibuya');
-  const [showSpikeDropdown, setShowSpikeDropdown] = useState(false);
+  const t = translations[lang] || translations.en;
+  const isRunning = state?.is_running ?? true;
+  const simSpeed = state?.sim_speed || 1.0;
+  const simTime = state?.sim_time || "08:30 AM";
 
   return (
-    <div className="bg-[#111827]/80 backdrop-blur border-y border-slate-800/80 px-4 lg:px-8 py-2.5">
-      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-        {/* Left: Simulation Primary Controls */}
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="bg-slate-900 border-b border-slate-800 px-4 sm:px-6 lg:px-8 py-2.5">
+      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
+        
+        {/* Left: Engine Controls & Clock */}
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={onTogglePlay}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all shadow-sm ${
               isRunning
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
-                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30'
+                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30'
             }`}
           >
-            {isRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-            <span>{isRunning ? 'PAUSE' : 'START SIMULATION'}</span>
+            {isRunning ? (
+              <>
+                <Pause className="w-3.5 h-3.5" />
+                <span>{t.pauseSim}</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-3.5 h-3.5" />
+                <span>{t.startSim}</span>
+              </>
+            )}
           </button>
 
           <button
             onClick={onReset}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 transition"
-            title="Reset Simulation to 08:42 AM"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white border border-slate-700/60 transition-all"
+            title="Reset simulation to initial state"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>RESET</span>
+            <span>{t.resetSim}</span>
           </button>
 
-          {/* Speed Selector */}
-          <div className="flex items-center rounded-lg bg-slate-900 border border-slate-800 p-0.5 text-xs">
-            <span className="px-2 text-slate-500 font-mono text-[11px]">SPEED:</span>
-            {[
-              { label: '0.5x', val: 0.5 },
-              { label: '1x', val: 1.0 },
-              { label: '2x', val: 2.0 },
-              { label: '5x', val: 5.0 },
-            ].map(({ label, val }) => (
+          {/* Speed Buttons */}
+          <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800">
+            {[1.0, 2.0, 5.0].map((s) => (
               <button
-                key={label}
-                onClick={() => onSetSpeed(val)}
-                className={`px-2 py-0.5 rounded text-[11px] font-mono transition ${
-                  simSpeed === val
-                    ? 'bg-cyan-500 text-slate-950 font-bold shadow'
+                key={s}
+                onClick={() => onSetSpeed(s)}
+                className={`px-2 py-1 rounded text-[11px] font-mono font-bold transition-all ${
+                  simSpeed === s
+                    ? 'bg-teal-500 text-slate-950 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                {label}
+                {s}x
               </button>
             ))}
           </div>
+
+          {/* Simulation Clock */}
+          <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-950 rounded-lg border border-slate-800/80 text-teal-300 font-mono font-bold">
+            <Clock className="w-3.5 h-3.5 text-teal-400" />
+            <span>{simTime}</span>
+            <span className="text-[10px] text-slate-500 font-normal">OPD Transit Hours</span>
+          </div>
+
+          {/* Data Source Badge */}
+          <div className="flex items-center gap-1 text-[11px] px-2 py-1 rounded bg-slate-800/60 text-slate-400 border border-slate-800">
+            <Database className="w-3 h-3 text-cyan-400" />
+            <span>{dataSource === 'backend' ? 'FastAPI REST' : 'In-Browser Client Engine'}</span>
+          </div>
         </div>
 
-        {/* Center: Highlighted Hackathon Pitch Button */}
-        <div className="flex items-center gap-2">
+        {/* Center: Live Simulation Synthetic Badge */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 text-[11px] font-mono font-semibold">
+          <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+          <span>{t.liveSimulationBanner}</span>
+        </div>
+
+        {/* Right: Quick Simulation Action Triggers */}
+        <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={onRunDemo}
-            className="relative group overflow-hidden flex items-center gap-2 px-4 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 text-white font-bold text-xs tracking-wide shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all border border-cyan-400/40"
+            onClick={onTriggerBooking}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 text-[11px] font-semibold transition-all"
+            title="Inject a realistic rural hospital transport request"
           >
-            <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-            <Sparkles className="w-4 h-4 text-cyan-200 animate-pulse" />
-            <span>RUN HACKATHON DEMO</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/20 font-mono">10-STEP</span>
+            <Car className="w-3 h-3 text-teal-400" />
+            <span>+ Sample Village Ride</span>
           </button>
 
-          {/* Quick Optimize Network Button */}
-          {hasRecommendations && (
-            <button
-              onClick={onOptimize}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border border-emerald-500/40 text-xs font-semibold animate-pulse transition"
-              title="Execute AI recommended battery transfer"
-            >
-              <ArrowRightLeft className="w-3.5 h-3.5 text-emerald-400" />
-              <span>OPTIMIZE NETWORK</span>
-            </button>
-          )}
+          <button
+            onClick={onTriggerAmbulance}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[11px] font-semibold transition-all"
+            title="Simulate high priority emergency 108 ambulance dispatch"
+          >
+            <Ambulance className="w-3 h-3 text-rose-400" />
+            <span>+ Emergency 108</span>
+          </button>
+
+          <button
+            onClick={onAdvanceRide}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[11px] font-semibold transition-all"
+            title="Step through current ride to hospital arrival"
+          >
+            <FastForward className="w-3 h-3 text-indigo-400" />
+            <span>Advance Active Ride</span>
+          </button>
         </div>
 
-        {/* Right: Manual Spike & Vehicle Filters */}
-        <div className="flex items-center gap-2">
-          {/* Demand Spike Controller */}
-          <div className="relative">
-            <button
-              onClick={() => setShowSpikeDropdown(!showSpikeDropdown)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition"
-            >
-              <TrendingUp className="w-3.5 h-3.5 text-amber-400" />
-              <span>TRIGGER DEMAND SPIKE</span>
-            </button>
-
-            {showSpikeDropdown && (
-              <div className="absolute right-0 mt-2 w-56 bg-[#162032] border border-slate-700 rounded-xl shadow-2xl p-2.5 z-50 animate-in fade-in zoom-in-95">
-                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2 px-1">
-                  Select Target Station:
-                </div>
-                <div className="space-y-1">
-                  {stations.map(st => (
-                    <button
-                      key={st.id}
-                      onClick={() => {
-                        onTriggerSpike(st.id, 18);
-                        setShowSpikeDropdown(false);
-                      }}
-                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-700/60 text-slate-200 flex items-center justify-between transition"
-                    >
-                      <span className="font-medium">{st.name}</span>
-                      <span className="text-[10px] font-mono text-cyan-400">{st.name_ja}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Vehicle Type Filter */}
-          <div className="flex items-center rounded-lg bg-slate-900 border border-slate-800 p-0.5 text-xs">
-            <button
-              onClick={() => onSetVehicleFilter('ALL')}
-              className={`px-2 py-1 rounded text-[11px] transition ${
-                vehicleFilter === 'ALL'
-                  ? 'bg-slate-700 text-white font-medium'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              ALL
-            </button>
-            <button
-              onClick={() => onSetVehicleFilter('EV')}
-              className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] transition ${
-                vehicleFilter === 'EV'
-                  ? 'bg-blue-600/80 text-white font-medium'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Car className="w-3 h-3" />
-              <span>EV</span>
-            </button>
-            <button
-              onClick={() => onSetVehicleFilter('E-BIKE')}
-              className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] transition ${
-                vehicleFilter === 'E-BIKE'
-                  ? 'bg-emerald-600/80 text-white font-medium'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Bike className="w-3 h-3" />
-              <span>E-BIKE</span>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

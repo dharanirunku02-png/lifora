@@ -1,80 +1,144 @@
 import React from 'react';
-import { Zap, Clock, ShieldCheck, Activity, Radio, Cpu } from 'lucide-react';
+import { 
+  HeartHandshake, 
+  Sparkles, 
+  Ambulance, 
+  UserCheck, 
+  Car, 
+  BarChart3, 
+  Globe2, 
+  Radio, 
+  ShieldAlert,
+  Languages
+} from 'lucide-react';
+import { translations } from '../i18n/translations';
 
-export default function Header({ state, dataSource, onReset }) {
-  const isCritical = state?.predicted_shortages_count > 0;
+export default function Header({ 
+  currentRole, 
+  onRoleChange, 
+  onOpenAmbulanceModal, 
+  onRunDemo, 
+  lang = 'en', 
+  onToggleLang, 
+  isDemoActive = false,
+  dataSource = 'client'
+}) {
+  const t = translations[lang] || translations.en;
 
   return (
-    <header className="border-b border-slate-800/80 bg-[#0d131f]/90 backdrop-blur-md sticky top-0 z-40 px-4 lg:px-8 py-3.5">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
-        {/* Brand & Tagline */}
-        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-emerald-400 p-0.5 shadow-lg shadow-cyan-500/20 flex items-center justify-center">
-              <div className="w-full h-full bg-[#0a0e17] rounded-[10px] flex items-center justify-center">
-                <Zap className="w-5 h-5 text-cyan-400 fill-cyan-400/20" />
+    <header className="bg-slate-900/90 border-b border-teal-500/20 backdrop-blur-md sticky top-0 z-40 transition-colors">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 gap-3">
+          
+          {/* Brand & Startup Identity */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-500 to-cyan-400 p-0.5 shadow-lg shadow-teal-500/25 flex items-center justify-center">
+              <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
+                <HeartHandshake className="w-5 h-5 text-teal-400 animate-pulse" />
               </div>
             </div>
+
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-extrabold text-xl tracking-tight text-white flex items-center gap-1.5">
-                  SwapSmart <span className="bg-gradient-to-r from-cyan-400 to-emerald-400 bg-clip-text text-transparent">Japan</span>
-                </h1>
-                <span className="text-[10px] font-mono tracking-widest px-2 py-0.5 rounded-full bg-cyan-950/80 text-cyan-300 border border-cyan-800/60 uppercase">
-                  東京 METRO
+                <span className="font-extrabold text-xl tracking-tight text-white flex items-center">
+                  LIFORA
+                  <span className="text-teal-400 font-mono text-xs ml-1.5 px-1.5 py-0.5 rounded bg-teal-500/10 border border-teal-500/20">
+                    24/7 CARE
+                  </span>
+                </span>
+                <span className="hidden sm:inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-800 text-teal-300 border border-teal-500/20">
+                  {t.badgeStudent}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-medium">
-                AI-Powered EV & E-Bike Battery Swapping Network
+              <p className="text-xs text-slate-400 font-medium hidden md:block">
+                {t.tagline}
               </p>
             </div>
           </div>
 
-          <div className="flex md:hidden items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-              LIVE
-            </span>
-          </div>
-        </div>
+          {/* Role Navigation Switcher */}
+          <div className="flex items-center bg-slate-950/80 p-1 rounded-xl border border-slate-800 shadow-inner">
+            <button
+              onClick={() => onRoleChange('customer')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                currentRole === 'customer'
+                  ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-md shadow-teal-500/20'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>{t.navCustomer}</span>
+            </button>
 
-        {/* Live Simulation Indicators & Tokyo Time */}
-        <div className="flex flex-wrap items-center gap-2.5 justify-end w-full md:w-auto text-xs">
-          {/* Synthetic Demo Data Disclaimer */}
-          <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-800/60 border border-slate-700/60 text-slate-300 text-[11px]">
-            <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Live Simulation / Synthetic Demo Data</span>
+            <button
+              onClick={() => onRoleChange('driver')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                currentRole === 'driver'
+                  ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-md shadow-teal-500/20'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Car className="w-3.5 h-3.5" />
+              <span>{t.navDriver}</span>
+            </button>
+
+            <button
+              onClick={() => onRoleChange('admin')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                currentRole === 'admin'
+                  ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-md shadow-teal-500/20'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              <span>{t.navAdmin}</span>
+            </button>
           </div>
 
-          {/* Simulated Tokyo Clock */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/80 font-mono text-slate-200">
-            <Clock className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="font-semibold">{state?.sim_time || "08:42:00"}</span>
-            <span className="text-slate-400 text-[11px]">JST</span>
-            <span className="text-slate-600">•</span>
-            <span className="text-cyan-300 text-[11px] font-sans font-medium">{state?.sim_day_period || "Morning Rush"}</span>
+          {/* Quick Actions: Ambulance, Language, Demo */}
+          <div className="flex items-center gap-2">
+            
+            {/* Emergency Ambulance Button */}
+            <button
+              onClick={onOpenAmbulanceModal}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-bold transition-all shadow-sm hover:shadow-rose-500/10 group"
+              title="24/7 Emergency Ambulance Assistance"
+            >
+              <Ambulance className="w-3.5 h-3.5 text-rose-400 group-hover:animate-bounce" />
+              <span className="hidden lg:inline">{t.navEmergency}</span>
+              <span className="font-mono text-[10px] bg-rose-500/30 px-1.5 py-0.2 rounded text-rose-200 ml-0.5">
+                108
+              </span>
+            </button>
+
+            {/* Language Switcher */}
+            <button
+              onClick={onToggleLang}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700/60 transition-all"
+              title="Switch language between English & Telugu"
+            >
+              <Languages className="w-3.5 h-3.5 text-teal-400" />
+              <span className="font-mono">{lang === 'en' ? 'తెలుగు' : 'English'}</span>
+            </button>
+
+            {/* RUN LIFORA HACKATHON DEMO */}
+            <button
+              onClick={onRunDemo}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-lg ${
+                isDemoActive
+                  ? 'bg-amber-500 text-slate-950 shadow-amber-500/30 ring-2 ring-amber-400 animate-pulse'
+                  : 'bg-gradient-to-r from-teal-400 via-cyan-400 to-blue-500 text-slate-950 shadow-cyan-500/25 hover:opacity-95 hover:scale-[1.02]'
+              }`}
+            >
+              <Sparkles className="w-4 h-4 fill-current text-slate-950" />
+              <span className="hidden sm:inline font-extrabold uppercase tracking-wide">
+                {isDemoActive ? 'Demo In Progress' : 'Run Lifora Demo'}
+              </span>
+              <span className="sm:hidden font-extrabold">Demo</span>
+            </button>
+
           </div>
 
-          {/* Engine / Data Source Badge */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400">
-            <Radio className={`w-3.5 h-3.5 ${dataSource === 'backend' ? 'text-emerald-400' : 'text-amber-400'} animate-pulse`} />
-            <span className="text-[11px]">
-              {dataSource === 'backend' ? 'FastAPI Connected' : 'Local Engine Active'}
-            </span>
-          </div>
-
-          {/* Shortage Threat Badge */}
-          {isCritical ? (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-300 font-semibold animate-pulse">
-              <Activity className="w-3.5 h-3.5 text-rose-400" />
-              <span>{state.predicted_shortages_count} Shortage Alert</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-medium">
-              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span>Network Balanced</span>
-            </div>
-          )}
         </div>
       </div>
     </header>

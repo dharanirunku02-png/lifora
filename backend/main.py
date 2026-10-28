@@ -6,13 +6,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from simulation import engine
+from models import BookingRequest
 
 # Background simulation runner
 async def simulation_loop():
     while True:
         try:
             if engine.is_running:
-                engine.tick(seconds_advanced=15)
+                engine.tick(seconds_advanced=10)
             await asyncio.sleep(2.0)
         except Exception as e:
             print(f"Simulation loop tick error: {e}")
@@ -20,14 +21,13 @@ async def simulation_loop():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Start background simulation task
     task = asyncio.create_task(simulation_loop())
     yield
     task.cancel()
 
 app = FastAPI(
-    title="SwapSmart Japan API",
-    description="AI-Powered EV & E-Bike Battery Swapping Network Simulation for congested Japanese metro areas.",
+    title="LIFORA Healthcare Mobility API",
+    description="24/7 Affordable Healthcare Transportation & Ambulance Booking System for Rural & Semi-Urban India",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -45,12 +45,32 @@ app.add_middleware(
 class SpeedRequest(BaseModel):
     speed: float
 
-class SpikeRequest(BaseModel):
-    station_id: str
-    magnitude: int = 15
+class StatusUpdateRequest(BaseModel):
+    status: str
 
-class ExecuteOptimizationRequest(BaseModel):
-    recommendation_id: Optional[str] = None
+class DriverAcceptRequest(BaseModel):
+    driver_id: Optional[str] = None
+
+class DriverAvailabilityRequest(BaseModel):
+    is_online: bool
+    is_available: bool
+
+class DriverRegisterRequest(BaseModel):
+    name: str
+    phone: str
+    vehicle_type: str
+    vehicle_name: str
+    vehicle_number: str
+    service_area: str
+
+class AmbulanceCreateRequest(BaseModel):
+    caller_name: str
+    caller_phone: str
+    emergency_type: str
+    pickup_location: str
+    pickup_lat: float
+    pickup_lng: float
+    hospital_name: str
 
 class DemoStepRequest(BaseModel):
     step: int
@@ -58,31 +78,21 @@ class DemoStepRequest(BaseModel):
 @app.get("/")
 def read_root():
     return {
-        "project": "SwapSmart Japan",
-        "tagline": "AI-Powered EV & E-Bike Battery Swapping Network",
-        "system": "Live Simulation / Synthetic Demo Data",
+        "project": "LIFORA",
+        "tagline": "Connecting Every Life to Care",
+        "title": "24/7 Affordable Healthcare Transportation and Ambulance Booking System",
+        "category": "Healthcare Mobility & Transportation Technology",
+        "notice": "LIVE SIMULATION — SYNTHETIC DEMO DATA",
         "status": "online",
         "sim_time": engine.get_time_string()
     }
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "service": "SwapSmart Japan API"}
-
-@app.get("/api/stations")
-def get_stations():
-    return list(engine.stations.values())
-
-@app.get("/api/stations/{station_id}")
-def get_station(station_id: str):
-    station = engine.stations.get(station_id)
-    if not station:
-        raise HTTPException(status_code=404, detail="Station not found")
-    # Return station plus its specific recent requests
-    requests = [r for r in engine.recent_requests if r["station_id"] == station_id]
     return {
-        "station": station,
-        "recent_requests": requests
+        "status": "ok", 
+        "service": "LIFORA Healthcare Transportation API",
+        "sim_time": engine.get_time_string()
     }
 
 @app.get("/api/simulation/state")
@@ -92,122 +102,165 @@ def get_simulation_state():
 @app.post("/api/simulation/start")
 def start_simulation():
     engine.is_running = True
-    engine.add_event("INFO", "Simulation resumed by operator.", severity="info")
+    engine.add_event("INFO", "LIFORA Healthcare Transit simulation resumed.", severity="info")
     return {"status": "started", "is_running": True}
 
 @app.post("/api/simulation/pause")
 def pause_simulation():
     engine.is_running = False
-    engine.add_event("INFO", "Simulation paused by operator.", severity="info")
+    engine.add_event("INFO", "LIFORA simulation paused by dispatcher.", severity="info")
     return {"status": "paused", "is_running": False}
 
 @app.post("/api/simulation/reset")
 def reset_simulation():
     engine.reset()
-    return {"status": "reset", "is_running": True}
+    return {"status": "reset", "sim_time": engine.get_time_string()}
 
 @app.post("/api/simulation/speed")
 def set_simulation_speed(req: SpeedRequest):
-    if req.speed <= 0:
-        raise HTTPException(status_code=400, detail="Speed must be positive")
+    if req.speed not in [1.0, 2.0, 5.0]:
+        raise HTTPException(status_code=400, detail="Speed must be 1.0, 2.0, or 5.0")
     engine.sim_speed = req.speed
-    engine.add_event("INFO", f"Simulation speed adjusted to {req.speed}x", severity="info")
     return {"status": "ok", "speed": engine.sim_speed}
 
-@app.post("/api/simulation/demand-spike")
-def trigger_spike(req: SpikeRequest):
-    success = engine.trigger_demand_spike(req.station_id, req.magnitude)
-    if not success:
-        raise HTTPException(status_code=404, detail=f"Station '{req.station_id}' not found")
-    return {"status": "ok", "station_id": req.station_id, "magnitude": req.magnitude}
+@app.post("/api/simulation/demo-step")
+def trigger_demo_step(req: DemoStepRequest):
+    if not (1 <= req.step <= 12):
+        raise HTTPException(status_code=400, detail="Demo step must be between 1 and 12")
+    res = engine.execute_demo_step(req.step)
+    return res
 
-@app.get("/api/predictions")
-def get_predictions():
-    stations_list = list(engine.stations.values())
-    predictions = []
-    for s in stations_list:
-        predictions.append({
-            "station_id": s["id"],
-            "station_name": s["name"],
-            "station_name_ja": s["name_ja"],
-            "available": s["available"],
-            "active_requests": s["active_requests"],
-            "shortage_risk_score": s["shortage_risk_score"],
-            "shortage_risk_level": s["shortage_risk_level"],
-            "predicted_shortage_min": s["predicted_shortage_min"]
-        })
-    return predictions
+# Hospital & Village endpoints
+@app.get("/api/hospitals")
+def get_hospitals():
+    return list(engine.hospitals.values())
 
-@app.get("/api/recommendations")
-def get_recommendations():
-    return engine.recommendations
+@app.get("/api/villages")
+def get_villages():
+    return list(engine.villages.values())
 
-@app.post("/api/optimization/execute")
-def execute_optimization(req: ExecuteOptimizationRequest):
-    transfer = engine.execute_recommendation(req.recommendation_id or "")
-    if not transfer:
-        raise HTTPException(status_code=400, detail="No valid optimization recommendations available to execute.")
-    return {"status": "dispatched", "transfer": transfer}
+# Booking Endpoints
+@app.get("/api/bookings")
+def get_bookings():
+    return list(engine.bookings.values())
+
+@app.post("/api/bookings")
+def create_booking(req: BookingRequest):
+    booking = engine.create_booking(req)
+    return booking
+
+@app.get("/api/bookings/{booking_id}")
+def get_booking(booking_id: str):
+    b = engine.bookings.get(booking_id)
+    if not b:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return b
+
+@app.post("/api/bookings/{booking_id}/accept")
+def accept_booking(booking_id: str, req: Optional[DriverAcceptRequest] = None):
+    try:
+        driver_id = req.driver_id if req else None
+        b = engine.accept_booking(booking_id, driver_id)
+        return b
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@app.post("/api/bookings/{booking_id}/status")
+def update_booking_status(booking_id: str, req: StatusUpdateRequest):
+    try:
+        b = engine.advance_booking_status(booking_id, req.status)
+        return b
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/bookings/{booking_id}/complete")
+def complete_booking(booking_id: str):
+    try:
+        b = engine.complete_booking(booking_id)
+        return b
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@app.post("/api/bookings/{booking_id}/cancel")
+def cancel_booking(booking_id: str):
+    b = engine.bookings.get(booking_id)
+    if not b:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    b.status = "CANCELLED"
+    b.payment_status = "CANCELLED"
+    if b.driver_id and b.driver_id in engine.drivers:
+        engine.drivers[b.driver_id].is_available = True
+    engine.add_event("INFO", f"Booking {booking_id} cancelled by user.", booking_id=booking_id, severity="warning")
+    return b
+
+# Driver Endpoints
+@app.get("/api/drivers")
+def get_drivers():
+    return list(engine.drivers.values())
+
+@app.post("/api/drivers/register")
+def register_driver(req: DriverRegisterRequest):
+    from models import Driver
+    new_id = f"drv-{len(engine.drivers) + 1}"
+    driver = Driver(
+        id=new_id,
+        name=req.name,
+        phone=req.phone,
+        vehicle_type=req.vehicle_type,
+        vehicle_name=req.vehicle_name,
+        vehicle_number=req.vehicle_number,
+        service_area=req.service_area,
+        rating=5.0,
+        is_online=True,
+        is_available=True,
+        current_lat=16.7107,
+        current_lng=81.0952,
+        total_trips=0,
+        total_earnings=0.0
+    )
+    engine.drivers[new_id] = driver
+    engine.add_event("INFO", f"New driver partner {driver.name} ({driver.vehicle_name}) registered in demo.", severity="info")
+    return driver
+
+@app.post("/api/drivers/{driver_id}/availability")
+def set_driver_availability(driver_id: str, req: DriverAvailabilityRequest):
+    driver = engine.drivers.get(driver_id)
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    driver.is_online = req.is_online
+    driver.is_available = req.is_available
+    return driver
+
+# Ambulance Request Endpoints
+@app.post("/api/ambulance-requests")
+def request_ambulance(req: AmbulanceCreateRequest):
+    amb = engine.create_ambulance_request(
+        req.caller_name,
+        req.caller_phone,
+        req.emergency_type,
+        req.pickup_location,
+        req.pickup_lat,
+        req.pickup_lng,
+        req.hospital_name
+    )
+    return amb
+
+@app.post("/api/ambulance-requests/{request_id}/status")
+def update_ambulance_status(request_id: str, req: StatusUpdateRequest):
+    try:
+        amb = engine.advance_ambulance_status(request_id, req.status)
+        return amb
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+# Receipt & Analytics
+@app.get("/api/receipts/{booking_or_rec_id}")
+def get_receipt(booking_or_rec_id: str):
+    rec = engine.receipts.get(booking_or_rec_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Receipt not found")
+    return rec
 
 @app.get("/api/analytics")
 def get_analytics():
-    stations = list(engine.stations.values())
-    total_ev = sum(s["ev_requests_count"] for s in stations)
-    total_ebike = sum(s["ebike_requests_count"] for s in stations)
-    
-    station_breakdown = [
-        {
-            "name": s["name"].replace(" Station", ""),
-            "name_ja": s["name_ja"],
-            "available": s["available"],
-            "charging": s["charging"],
-            "in_use": s["in_use"],
-            "requests": s["active_requests"],
-            "waiting_time": s["avg_waiting_time"],
-            "risk_score": s["shortage_risk_score"]
-        }
-        for s in stations
-    ]
-    
-    return {
-        "timestamp": engine.get_time_string(),
-        "total_ev_requests": total_ev,
-        "total_ebike_requests": total_ebike,
-        "station_breakdown": station_breakdown,
-        "network_utilization_pct": round(
-            (sum(s["in_use"] + s["charging"] for s in stations) / max(1, sum(s["capacity"] for s in stations))) * 100, 1
-        )
-    }
-
-@app.post("/api/demo/hackathon-step")
-def demo_step(req: DemoStepRequest):
-    """Executes predefined narrative steps for the Hackathon live pitch."""
-    step = req.step
-    if step == 1:
-        engine.reset()
-        engine.add_event("DEMO", "STEP 1: Baseline Tokyo Metropolitan network operation initialized.", severity="info")
-    elif step == 2:
-        engine.trigger_demand_spike("shibuya", 18)
-        engine.add_event("DEMO", "STEP 2 & 3: High morning rush demand surge hits Shibuya. Battery reserves dropping.", station_name="Shibuya Station", severity="warning")
-    elif step == 4 or step == 5:
-        engine.add_event("DEMO", "STEP 4 & 5: AI Shortage Predictor triggered Critical warning for Shibuya (Depletion in ~8 min).", station_name="Shibuya Station", severity="critical")
-    elif step == 6 or step == 7:
-        engine._refresh_recommendations()
-        engine.add_event("DEMO", "STEP 6 & 7: Optimization Engine recommends dispatching surplus batteries from Shinjuku to Shibuya.", severity="info")
-    elif step == 8 or step == 9:
-        if engine.recommendations:
-            engine.execute_recommendation(engine.recommendations[0]["id"])
-        engine.add_event("DEMO", "STEP 8 & 9: Redistribution approved! Live animated transit underway across Tokyo corridor.", severity="success")
-    elif step == 10:
-        # Complete transfer immediately for presentation finale
-        shibuya = engine.stations.get("shibuya")
-        if shibuya:
-            shibuya["available"] = max(14, shibuya["available"])
-            shibuya["avg_waiting_time"] = 2.8
-            shibuya["shortage_risk_score"] = 24
-            shibuya["shortage_risk_level"] = "Low"
-            shibuya["active_requests"] = 6
-        engine.active_transfers.clear()
-        engine.add_event("DEMO", "STEP 10: Batteries restocked! Shibuya shortage averted, waiting time slashed from 8.2m to 2.8m!", station_name="Shibuya Station", severity="success")
-        
-    return {"status": "ok", "step": step, "state": engine.get_state()}
+    return engine.get_analytics()
